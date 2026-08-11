@@ -25,8 +25,15 @@ def load_config(path):
     Must raise ValueError naming the specific missing key if REQUIRED_KEYS
     are not all present. Do not let this fail with a bare KeyError later.
     """
-    # TODO: implement
-    raise NotImplementedError("load_config is not implemented yet")
+
+    with open(path, 'r') as file:
+        config = yaml.safe_load(file)
+
+    for key in REQUIRED_KEYS:
+        if key not in config:
+            raise ValueError(f"Missing key:{key}")
+
+    return config
 
 
 def load_transactions(path, fmt):
@@ -37,8 +44,23 @@ def load_transactions(path, fmt):
     (str or float) and "is_fraud" (str "True"/"False" or bool).
     Raise ValueError for any fmt other than "csv" or "json".
     """
-    # TODO: implement
-    raise NotImplementedError("load_transactions is not implemented yet")
+    
+    if fmt != "csv" and fmt != "json":
+        raise ValueError(f"{fmt} is not supported.Format should be in csv or json")
+
+    if fmt == "csv":
+        with open(path,"r",newline="") as file:
+            reader = csv.DictReader(file)
+            return list(reader)
+
+    if fmt == "json":
+        with open(path,"r") as file:
+            transactions = json.load(file)
+
+        if not isinstance(transactions,list):
+            raise ValueError("JSON transaction data must be a list")
+
+        return transactions
 
 
 def run_pipeline(config):
@@ -47,9 +69,37 @@ def run_pipeline(config):
     n_high_value, high_value_threshold), and write them as JSON to
     config["output_path"]. Return the report dict as well.
     """
-    # TODO: implement
-    raise NotImplementedError("run_pipeline is not implemented yet")
 
+    rows = load_transactions(
+        config["input_path"],
+        config["input_format"]
+    )
+
+    n = len(rows)
+
+    total_amount = sum(float(r["amount"]) for r in rows)
+    n_fraud = sum(1 for r in rows if r["is_fraud"].lower() == "true")
+
+    threshold = float(config["high_value_threshold"])
+
+    n_high_value = sum(1 for r in rows if float(r["amount"]) > threshold)
+
+    report = {
+        "n_transactions": n,
+        "total_amount": round(total_amount, 2),
+        "fraud_rate": round(n_fraud / n, 4) if n else 0.0,
+        "n_high_value": n_high_value,
+        "high_value_threshold": threshold,
+    }
+
+    with open(config["output_path"],"w") as f:
+        json.dump(report, f, indent=2)
+        
+    print(f"Wrote report to {config['output_path']}")
+    print(json.dumps(report, indent=2))
+
+    return report
+    
 
 def main():
     parser = argparse.ArgumentParser(description="Config-driven fraud transaction summary pipeline")
