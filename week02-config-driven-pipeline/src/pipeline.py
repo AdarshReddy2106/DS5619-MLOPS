@@ -78,7 +78,7 @@ def run_pipeline(config):
     n = len(rows)
 
     total_amount = sum(float(r["amount"]) for r in rows)
-    n_fraud = sum(1 for r in rows if r["is_fraud"].lower() == "true")
+    n_fraud = sum(1 for r in rows if str(r["is_fraud"]).lower() == "true")
 
     threshold = float(config["high_value_threshold"])
 
@@ -96,8 +96,6 @@ def run_pipeline(config):
         json.dump(report, f, indent=2)
         
     print(f"Wrote report to {config['output_path']}")
-    print(json.dumps(report, indent=2))
-
     return report
     
 
