@@ -10,6 +10,13 @@ pip install -r requirements.txt
 python generate_for_student.py --student-id <your roll number>
 ```
 
+```windows cmd
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python generate_for_student.py --student-id <your roll number>
+```
+
 The last command overwrites `data/v1/transactions.csv` and `data/v1/transactions.json`
 with a dataset generated deterministically from your student ID — same shape as
 everyone else's (500 rows, same columns), different actual values. Two students never
@@ -118,9 +125,5 @@ and pipeline wiring work on the known cases, not that you're done.
 
 Tag your final commit `week02-submit` and push it before the deadline:
 
-```bash
-git add -A
-git commit -m "Week 2: config-driven pipeline"
-git tag week02-submit
-git push origin main --tags
-```
+
+
