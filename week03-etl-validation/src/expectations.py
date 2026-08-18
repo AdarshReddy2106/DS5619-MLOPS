@@ -42,13 +42,35 @@ def expect_column_not_null(rows, column):
 
 
 def expect_column_positive(rows, column):
+    violations = []
     """Return a Violation for every row where rows[i][column], cast to float,
     is not strictly greater than 0. If the value can't be cast to float at
     all, that also counts as a violation (detail should say so).
     """
-    # TODO: implement
-    raise NotImplementedError
+    for idx, row in enumerate(rows):
+        try:
+            curr = float(row[column])
+            if curr<=0:
+                violations.append(
+                    Violation(
+                        "expect_column_positive",
+                        column,
+                        idx,
+                        "Value can't cast to float"
+                    )
+                )
+            
+        except ValueError or TypeError:
+            violations.append(
+                Violation(
+                    "expect_column_positive",
+                    column,
+                    idx,
+                    "Value is less than or equal to zero"
+                )
+            )
 
+    return violations
 
 def expect_column_in_set(rows, column, allowed_values):
     """Return a Violation for every row where rows[i][column] is not a member
