@@ -76,8 +76,20 @@ def expect_column_in_set(rows, column, allowed_values):
     """Return a Violation for every row where rows[i][column] is not a member
     of allowed_values (a set or list you're given).
     """
-    # TODO: implement
-    raise NotImplementedError
+    violations = []
+
+    for idx , row in enumerate(rows):
+        if row[column] not in allowed_values:
+            violations.append(
+                Violation(
+                    "expect_column_in_set",
+                    column,
+                    idx,
+                    "Value is not a member of allowed values"
+                )
+            )
+
+    return violations
 
 
 def expect_column_unique(rows, column):
@@ -85,5 +97,21 @@ def expect_column_unique(rows, column):
     already seen in `column`. (i.e. if three rows share a value, rows 2 and 3
     are violations; row 1 is not.)
     """
-    # TODO: implement
-    raise NotImplementedError
+    violations = []
+    values = set()
+
+    for idx, row in enumerate(rows):
+        if row[column] not in values:
+            values.add(row[column])
+
+        else:
+            violations.append(
+                Violation(
+                    "expect_column_unique",
+                    column,
+                    idx,
+                    "Value is already seen."
+                    )
+            )
+
+    return violations
