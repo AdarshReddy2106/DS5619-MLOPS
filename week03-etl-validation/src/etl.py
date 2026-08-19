@@ -53,8 +53,78 @@ def run_etl(config):
 
     Return the validation_report dict as well as writing it to disk.
     """
-    # TODO: implement
-    raise NotImplementedError
+
+    # Extraction
+    rows = extract(config["input_path"])
+
+    # validate
+
+    suite = build_expectation_suite()
+    all_violations  = []
+    for expectation_function, argument in suite:
+        violations  = expectation_function(rows,**argument) 
+        # **arguments unpacks the dictionary and pass its contents as arguments. 
+        # ex: expectation_function(rows, column="amount")
+        all_violations.extend(violations) 
+        # collectiong all violations in to a single list
+
+    bad_row_indices = set()
+
+    for violation in all_violations:
+        bad_row_indices.add(violation.row_index)
+
+    clean_rows = []
+    quarantined_rows = []
+
+    for index, row in enumerate(rows):
+        if index in bad_row_indices:
+            quarantined_rows.append(row)
+
+        else:
+            clean_rows.append(row)
+
+    
+    # writing to csv files
+
+    with open(config["clean_output_path"], "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(clean_rows)
+
+
+    with open(config["quarantine_output_path"], "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(quarantined_rows)
+
+    # summary
+    expectation_results = {}
+
+    for violation in all_violations:
+        expectation = violation.expectation
+        column = violation.column
+        key = f"{expectation}_{column}"
+
+        if key not in expectation_results:
+            expectation_results[key] = {
+                "expectation": expectation,
+                "column": column,
+                "n_violations": 0,
+                "row_indices": []
+            }
+
+        expectation_results[key]["n_violations"] += 1
+        expectation_results[key]["row_indices"].append(violation.row_index)
+
+    validation_report = {
+        "expectations": list(expectation_results.values())
+    }
+
+    with open(config["report_output_path"], "w") as f:
+        json.dump(validation_report, f, indent=2)
+    
+    return validation_report
+
 
 
 def main():
