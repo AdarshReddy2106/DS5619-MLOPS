@@ -2,7 +2,10 @@
 
 **Student ID used with `generate_for_student.py`:**
 <!-- paste the --student-id value you used -->
-
+student_id: 102301018
+seed: 1267684190
+Wrote 500 v1 records -> /home2/mlops/DS5619-MLOPS/week04-versioning-feature-store/data/v1/transactions.csv
+Wrote 125 v2 records -> /home2/mlops/DS5619-MLOPS/week04-versioning-feature-store/data/v2/transactions.csv
 
 ## v1 vs. v2 manifest comparison
 
