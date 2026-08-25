@@ -56,7 +56,7 @@ def expect_column_positive(rows, column):
                         "expect_column_positive",
                         column,
                         idx,
-                        "Value can't cast to float"
+                        "Value is less than or equal to zero"
                     )
                 )
             
@@ -66,7 +66,7 @@ def expect_column_positive(rows, column):
                     "expect_column_positive",
                     column,
                     idx,
-                    "Value is less than or equal to zero"
+                    "Value can't cast to float"
                 )
             )
 

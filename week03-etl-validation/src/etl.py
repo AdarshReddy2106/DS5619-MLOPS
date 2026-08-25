@@ -57,7 +57,7 @@ def run_etl(config):
     # Extraction
     rows = extract(config["input_path"])
 
-    # validate
+    # Validate
 
     suite = build_expectation_suite()
     all_violations  = []
@@ -66,7 +66,7 @@ def run_etl(config):
         # **arguments unpacks the dictionary and pass its contents as arguments. 
         # ex: expectation_function(rows, column="amount")
         all_violations.extend(violations) 
-        # collectiong all violations in to a single list
+        # collecting all violations in to a single list
 
     bad_row_indices = set()
 
