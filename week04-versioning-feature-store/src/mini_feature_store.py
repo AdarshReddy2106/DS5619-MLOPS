@@ -42,8 +42,7 @@ def content_hash(file_path):
 
 
 def _next_version_id(existing_dir):
-    """Given a directory of existing v1/, v2/, ... subfolders, return the
-    next version id string. Given — you don't need to touch this."""
+    """Given a directory of existing v1/, v2/, ... subfolders, return the next version id string. Given — you don't need to touch this."""
     if not os.path.isdir(existing_dir):
         return "v1"
     nums = []
@@ -77,8 +76,51 @@ def snapshot_raw_version(input_path, registry_dir):
            CSV header), row_count, created_at (use _now()).
       5. Return the version_id (str).
     """
-    # TODO: implement
-    raise NotImplementedError
+    # creating Directory for raw versions 
+    raw_versions_dir = os.path.join(registry_dir, "raw_versions")
+
+    # Calculates a SHA-256 fingerprint of the CSV file. Identical file content always produces the same hash.
+    file_hash = content_hash(input_path)
+
+
+    if os.path.isdir(raw_versions_dir):
+
+        for version_id in os.listdir(raw_versions_dir):
+
+            manifest_path = os.path.join(raw_versions_dir, version_id, "manifest.json")
+
+            if not os.path.isfile(manifest_path):
+                continue
+
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+            if manifest.get("content_hash") == file_hash:
+                return manifest["version_id"]
+
+    version_id = _next_version_id(raw_versions_dir)
+
+    version_dir = os.path.join(raw_versions_dir, version_id)
+
+    os.makedirs(version_dir, exist_ok=True)  # exist_ok=True prevents an error if it already exists.
+
+    with open(input_path, newline="") as f:
+        reader = csv.DictReader(f)
+        columns = reader.fieldnames or []
+        row_count = sum(1 for _ in reader)
+
+    manifest = {
+        "version_id": version_id,
+        "source_path": input_path,
+        "content_hash": file_hash,
+        "columns": columns,
+        "row_count": row_count,
+        "created_at": _now(),
+    }
+
+    with open(os.path.join(version_dir, "manifest.json"), "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    return version_id
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +137,7 @@ def build_features(rows):
       avg_amount     (float, rounded to 2 dp) - mean transaction amount
       max_amount     (float, rounded to 2 dp) - max transaction amount
       pct_card_present (float, rounded to 3 dp) - fraction with card_present true
-      event_time     (str)   - the MAX timestamp seen for this card (as-is string
-                                comparison works fine since timestamps are ISO8601)
+      event_time     (str)   - the MAX timestamp seen for this card (as-is string comparison works fine since timestamps are ISO8601)
 
     Schema handling:
       - v1 rows have "amount" (already a float-ish string) and "country".
@@ -110,8 +151,49 @@ def build_features(rows):
 
     Return: list of feature row dicts, one per card_id, in any order.
     """
-    # TODO: implement
-    raise NotImplementedError
+    if not rows:
+        return []
+
+    is_v2 = "country_code" in rows[0]   # checks first row
+    amount_key = "amount_minor_units" if is_v2 else "amount"
+
+    aggregates = {}
+    for row in rows:
+        card_id = row["card_id"]
+        amount = float(row[amount_key])
+        if is_v2:
+            amount /= 100
+
+        if card_id not in aggregates:
+            aggregates[card_id] = {
+                "amounts": [],
+                "card_present_count": 0,
+                "event_time": row["timestamp"],
+            }
+
+        aggregate = aggregates[card_id]
+        aggregate["amounts"].append(amount)
+        if row["card_present"] == "True":
+            aggregate["card_present_count"] += 1
+        if row["timestamp"] > aggregate["event_time"]:
+            aggregate["event_time"] = row["timestamp"]
+
+    features = []
+    for card_id, aggregate in aggregates.items():
+        amounts = aggregate["amounts"]
+        txn_count = len(amounts)
+        features.append({
+            "card_id": card_id,
+            "txn_count": txn_count,
+            "avg_amount": round(sum(amounts) / txn_count, 2),
+            "max_amount": round(max(amounts), 2),
+            "pct_card_present": round(
+                aggregate["card_present_count"] / txn_count, 3
+            ),
+            "event_time": aggregate["event_time"],
+        })
+
+    return features
 
 
 # ---------------------------------------------------------------------------
@@ -140,8 +222,30 @@ def register_feature_group(name, feature_rows, source_version_id, registry_dir, 
            created_at (use _now()).
       5. Return fg_version_id (str).
     """
-    # TODO: implement
-    raise NotImplementedError
+    fg_dir = os.path.join(registry_dir, "feature_groups", name)
+    fg_version_id = _next_version_id(fg_dir)
+    version_dir = os.path.join(fg_dir, fg_version_id)
+    os.makedirs(version_dir, exist_ok=True)
+
+    with open(os.path.join(version_dir, "features.json"), "w") as f:
+        json.dump(feature_rows, f, indent=2)
+
+    schema = sorted(list(feature_rows[0].keys())) if feature_rows else []
+
+    manifest = {
+        "feature_group_version_id": fg_version_id,
+        "name": name,
+        "source_raw_version_id": source_version_id,
+        "transform_version": transform_version,
+        "schema": schema,
+        "row_count": len(feature_rows),
+        "created_at": _now(),
+    }
+
+    with open(os.path.join(version_dir, "manifest.json"), "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    return fg_version_id
 
 
 # ---------------------------------------------------------------------------
@@ -162,5 +266,17 @@ def get_lineage(name, fg_version_id, registry_dir):
     FileNotFoundError (the default behavior of open() on a missing file is
     fine — don't catch it) if either manifest is missing.
     """
-    # TODO: implement
-    raise NotImplementedError
+    fg_manifest_path = os.path.join(registry_dir, "feature_groups", name, fg_version_id, "manifest.json")
+    with open(fg_manifest_path) as f:
+        fg_manifest = json.load(f)
+
+    source_raw_version_id = fg_manifest["source_raw_version_id"]
+    
+    raw_manifest_path = os.path.join(registry_dir, "raw_versions", source_raw_version_id, "manifest.json")
+    with open(raw_manifest_path) as f:
+        raw_manifest = json.load(f)
+
+    return {
+        "feature_group": fg_manifest,
+        "raw_source": raw_manifest
+    }
