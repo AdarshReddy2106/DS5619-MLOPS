@@ -92,10 +92,13 @@ def snapshot_raw_version(input_path, registry_dir):
             if not os.path.isfile(manifest_path):
                 continue
 
-            with open(manifest_path) as f:
-                manifest = json.load(f)
-            if manifest.get("content_hash") == file_hash:
-                return manifest["version_id"]
+            try:
+                with open(manifest_path) as f:
+                    manifest = json.load(f)
+                if manifest.get("content_hash") == file_hash:
+                    return manifest["version_id"]
+            except json.JSONDecodeError:
+                continue
 
     version_id = _next_version_id(raw_versions_dir)
 
