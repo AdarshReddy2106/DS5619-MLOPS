@@ -68,10 +68,27 @@ def register_model(name, model_path, metrics, registry_dir):
            created_at (use _now()).
       5. Return version_id (str).
     """
-    # TODO: implement
-    raise NotImplementedError
+    version_id = _next_version_id(os.path.join(registry_dir, "models", name))
+    model_dir = _model_dir(registry_dir, name, version_id)
+    os.makedirs(model_dir, exist_ok=True)
 
+    with open(model_path) as f:
+        model_content = json.load(f)
 
+    with open(os.path.join(model_dir, "model.json"), "w") as f:
+        json.dump(model_content, f, indent = 2)
+
+    manifest = {
+        "version_id" : version_id,
+        "name" : name,
+        "metrics" : metrics,
+        "stage" : "None",
+        "created_at" : _now()
+    }
+    with open(os.path.join(model_dir,"manifest.json"), "w") as f:
+        json.dump(manifest, f, indent = 2)
+
+    return version_id
 # ---------------------------------------------------------------------------
 # Part 2 — Generate a model card (must be genuinely filled in, not just present)
 # ---------------------------------------------------------------------------
@@ -96,10 +113,34 @@ def generate_model_card(name, version_id, card_fields, registry_dir):
          card_fields, metrics (from step 2), created_at (use _now()).
       4. Return the path you wrote to.
     """
-    # TODO: implement
-    raise NotImplementedError
+    for field in REQUIRED_CARD_FIELDS:
+        value = card_fields.get(field)
 
+        if value is None or not str(value).strip():
+            raise ValueError(f"model card field '{field}' id missing or empty")
 
+        if "TODO" in str(value):
+            raise ValueError(f"{field} still contains TODO")
+
+    model_dir = _model_dir(registry_dir, name, version_id)
+    with open(os.path.join(model_dir, "manifest.json")) as f:
+        manifest = json.load(f)
+
+    m_card = {
+        "name": name,
+        "version_id" : version_id,
+        **card_fields,
+        "metrics" : manifest["metrics"],
+        "stage" : "None" , 
+        "created_at" : _now()
+    }
+
+    card_path = os.path.join(model_dir, "model_card.json")
+
+    with open(card_path,"w") as f:
+        json.dump(m_card , f, indent=2)
+
+    return card_path
 # ---------------------------------------------------------------------------
 # Part 3 — Promote a model version (the governance gate)
 # ---------------------------------------------------------------------------
@@ -131,20 +172,79 @@ def promote_model(name, version_id, target_stage, registry_dir):
       3. Write the updated manifest.json back to disk.
       4. Return the updated manifest (dict).
     """
-    # TODO: implement
-    raise NotImplementedError
+    if target_stage not in ("Staging", "Production"):
+        raise ValueError("target_stage must be 'Staging' or 'Production'")
 
+    model_dir = _model_dir(registry_dir, name, version_id)
+    manifest_path = os.path.join(model_dir, "manifest.json")
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+
+    if target_stage == "Production":
+        model_card_path = os.path.join(model_dir, "model_card.json")
+        if not os.path.exists(model_card_path):  
+            # check whether the path exists
+            raise GovernanceError(
+                f"cannot promote {name} {version_id} to Production: "
+                "no model_card.json"
+            )
+
+        f1_score = manifest["metrics"]["f1"]
+        if f1_score < PRODUCTION_F1_THRESHOLD:
+            raise GovernanceError(
+                f"cannot promote {name} {version_id} to Production as "
+                f"f1={f1_score} < {PRODUCTION_F1_THRESHOLD}"
+            )
+
+        model_root = os.path.join(registry_dir, "models", name)
+        for other_version_id in os.listdir(model_root):
+            if other_version_id == version_id:
+                continue
+            other_dir = os.path.join(model_root, other_version_id)
+            other_manifest_path = os.path.join(other_dir, "manifest.json")
+            if not os.path.isfile(other_manifest_path):
+                continue
+            with open(other_manifest_path) as f:
+                other_manifest = json.load(f)
+            if other_manifest.get("stage") == "Production":
+                other_manifest["stage"] = "Archived"
+                with open(other_manifest_path, "w") as f:
+                    json.dump(other_manifest, f, indent=2)
+
+    old_stage = manifest.get("stage", "None")
+    manifest["stage"] = target_stage
+    manifest.setdefault("history", []).append({
+        "from_stage": old_stage,
+        "to_stage": target_stage,
+        "at": _now(),
+    })
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    return manifest
 
 # ---------------------------------------------------------------------------
 # Part 4 — Look up what's currently in production
 # ---------------------------------------------------------------------------
 
 def get_production_model(name, registry_dir):
-    """Return the manifest (dict) of whichever version of model `name` is
-    currently in stage "Production", by scanning every version's
-    manifest.json under registry_dir/models/{name}/.
+    """Return the manifest (dict) of whichever version of model `name` is currently in stage "Production", by scanning every version's  manifest.json under registry_dir/models/{name}/.
 
     Return None if no version is currently in Production.
     """
-    # TODO: implement
-    raise NotImplementedError
+    models_dir = os.path.join(registry_dir, "models", name)
+
+    if not os.path.isdir(models_dir):
+        return None
+
+    for v in os.listdir(models_dir):
+        manifest_path = os.path.join(models_dir, v, "manifest.json")
+        if not os.path.isfile(manifest_path):
+            continue
+        with open(manifest_path, "r") as f:
+            manifest = json.load(f)
+
+        if manifest.get("stage") == "Production":
+            return manifest
+
+    return None
