@@ -9,19 +9,22 @@ candidate_b: f1=0.816 (clears 0.70 bar)
 
 ## Which candidate reached Production, and why?
 
-<!-- Which candidate ended up in Production, and why? -->
+Candidate B reached Production because its F1 score was 0.816, above the
+0.70 threshold, and it had a completed model card. Candidate A was blocked:
+its F1 score was 0.477, even after its model card was created.
 
 
 ## Gating stale feature data
 
-<!-- What would you need to add to promote_model's gate if you also wanted
-     to block promotion of a model trained on stale (e.g. >30-day-old)
-     feature data? -->
+I would record the feature-data creation time or age in the model manifest and
+check it in promote_model. Production promotion should raise GovernanceError
+when the recorded data age is greater than 30 days, or when the metadata is
+missing or cannot be verified.
 
 
 ## Scaling the gate to 40 candidates
 
-<!-- Tying back to this week's AutoML/HPO framing: if a hyperparameter
-     search had handed you 40 candidates instead of 2, what in your
-     register_model/promote_model design would need to change (or
-     genuinely wouldn't) to gate 40 instead of 2? -->
+The design already supports 40 candidates because register_model assigns each
+candidate a separate version and promote_model evaluates one version at a
+time. The pipeline would need to register all 40 candidates and apply the
+same card and metric gates to each; no special two-candidate logic is needed.

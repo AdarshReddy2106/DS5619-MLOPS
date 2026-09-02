@@ -2,139 +2,126 @@
 
 **Track A (tabular fraud-detection) · Week 5 · DS5619 Machine Learning Systems Operations**
 
-
 ## Setup
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 python generate_for_student.py --student-id <your roll number or institute email>
 ```
 
-This overwrites `data/candidate_a/{model.json,metrics.json}` and
-`data/candidate_b/{model.json,metrics.json}` with values generated
-deterministically from your student ID — same structure as everyone else's
-(candidate_a always fails the 0.70 f1 production bar, candidate_b always
-clears it — otherwise the governance-gate point wouldn't demonstrate
-anything), but different actual threshold/metric numbers. Two students never
-get the same data.
+The generator creates personalized files in `data/candidate_a/` and
+`data/candidate_b/`. Candidate A is deliberately below the F1 requirement;
+candidate B is deliberately above it. Record the same student ID in
+`NOTES.md`; the grader uses it to regenerate and verify your data.
 
-**Record your `--student-id` value in `NOTES.md`.** The grader re-runs
-`generate_for_student.py` with the ID you recorded and diffs the result
-against what you committed, and checks that your `registry_summary.json`'s
-production metrics actually match YOUR candidate_b, not a generic or shared
-example.
+## Learning Objective
 
-## Learning objective
+This lab builds a small local model registry using JSON files instead of an
+MLflow or W&B server. The registry demonstrates three practical ideas:
 
-This week's lecture covered the model registry as an artifact store, model
-cards as the one-page governance record, and why the registry — not a Slack
-thread or someone's memory — is the answer to "what's actually in
-production." You'll build a **minimal local model registry** that enforces
-those two governance rules as code, not just policy: no promotion to
-Production without a complete model card, and no promotion without metrics
-that clear a quality bar.
+1. **Artifact identity:** each registered model gets its own immutable version.
+2. **Governance evidence:** each model can have a model card describing its
+   intended use, data, limitations, and ethical considerations.
+3. **Promotion gates:** Production requires both a complete model card and an
+   F1 score of at least `0.70`.
 
-This week's lecture also named where the problem starts: a hyperparameter
-search or AutoML run producing many near-identical candidates (like
-`candidate_a`/`candidate_b` here, just two of them) — explicitly scoped as
-model-development work this course doesn't teach as a lab, because the
-registry is what happens *after* that search ends, which is exactly what
-you're building.
+The registry answers “what is currently in Production?” from saved manifests,
+not from memory or a chat message.
 
 ## Files
 
-- `src/mini_model_registry.py` — implement the four `# TODO` functions.
-- `src/run_pipeline.py` — complete driver script. Don't edit.
-- `model_card_fields.json` — fill in with real content before running the
-  pipeline (it will refuse to run while any `TODO` remains).
-- `data/candidate_a/`, `data/candidate_b/` — your two personalized model
-  candidates + their metrics, generated above (don't hand-edit).
+- `src/mini_model_registry.py` — implement the four registry functions.
+- `src/run_pipeline.py` — complete driver script. Do not edit it.
+- `model_card_fields.json` — replace every `TODO` with specific model-card content.
+- `data/candidate_a/` and `data/candidate_b/` — generated model artifacts and metrics. Do not hand-edit these files.
+- `.model_registry/` — generated version folders, manifests, and model cards.
+- `registry_summary.json` — generated summary of the Production model.
+- `NOTES.md` 
 
-## Background
+## Functions
 
-`data/candidate_a/` and `data/candidate_b/` are two already-trained
-candidate models for a fraud-detector (deliberately simple: a single amount
-threshold), each with its own `metrics.json`. One clears production quality
-bar, one doesn't — you won't be told which until you run the pipeline and
-see the registry enforce it.
+All four functions are in `src/mini_model_registry.py`.
 
-## Your task
+### `register_model(name, model_path, metrics, registry_dir)`
 
-**Part 1 — `src/mini_model_registry.py`** (four functions marked `# TODO`,
-each has a full docstring spec)
+- Creates the next version under `registry_dir/models/{name}/`.
+- Copies the JSON artifact to `model.json`.
+- Writes `manifest.json` with the version, metrics, initial stage `"None"`, and creation time.
+- Returns the new version ID.
 
-- `register_model(name, model_path, metrics, registry_dir)` — the artifact
-  store: version a model file + its metrics, initial stage `"None"`.
-- `generate_model_card(name, version_id, card_fields, registry_dir)` — the
-  governance record: reject anything with a missing or `TODO`-containing
-  field, otherwise write it.
-- `promote_model(name, version_id, target_stage, registry_dir)` — the gate:
-  Production requires a card AND `metrics["f1"] >= PRODUCTION_F1_THRESHOLD`;
-  a successful promotion to Production archives whichever version was
-  previously there.
-- `get_production_model(name, registry_dir)` — what's actually in
-  production, right now, no memory required.
+### `generate_model_card(name, version_id, card_fields, registry_dir)`
 
-**Part 2 — `model_card_fields.json`** (fill in real content)
+- Requires every field listed in `REQUIRED_CARD_FIELDS`.
+- Rejects missing, empty, or `TODO`-containing values.
+- Writes the completed card and the registered metrics to `model_card.json`.
 
-Replace every `"TODO: ..."` placeholder with a genuine 1-2 sentence answer.
-`src/run_pipeline.py` refuses to run at all while any placeholder remains —
-that's the same "must actually be filled in" rule your `generate_model_card`
-function enforces, applied to you first.
+### `promote_model(name, version_id, target_stage, registry_dir)`
+
+- Allows promotion to `Staging` without the Production gate.
+- Allows promotion to `Production` only when a card exists and `metrics["f1"] >= PRODUCTION_F1_THRESHOLD`.
+- Archives any other version currently in Production.
+- Appends each successful stage change to the manifest history.
+
+### `get_production_model(name, registry_dir)`
+
+- Scans saved manifests for the version whose stage is `"Production"`.
+- Returns that manifest, or `None` when no version is in Production.
+
+## Complete the Model Card
+
+Edit `model_card_fields.json` and replace all `TODO` placeholders 
+
+`src/run_pipeline.py` checks for `TODO` before doing any registry work, so the
+card must be completed first.
+
+## Run the Pipeline
 
 ```bash
 python src/run_pipeline.py
 ```
 
-It registers both candidates, deliberately attempts two promotions that
-should be blocked (no card, then f1 too low) and prints why each was
-blocked, then successfully promotes the model that clears the bar and writes
-`registry_summary.json`.
+The script performs this sequence:
 
-## Self-check
+1. Registers candidate A and candidate B as separate model versions.
+2. Attempts to promote candidate A without a card. The registry blocks it.
+3. Creates candidate A's card and tries again. Its low F1 blocks it again.
+4. Creates candidate B's card and promotes it to Production.
+5. Writes `registry_summary.json` with the current Production version and
+   metrics.
+
+The two blocked promotions are expected output, not pipeline failures.
+
+Inspect these outputs after the run:
+
+- `.model_registry/models/fraud-detector/v*/manifest.json` — version, metrics,
+  stage, and promotion history.
+- `.model_registry/models/fraud-detector/v*/model_card.json` — governance
+  evidence for each completed card.
+- `registry_summary.json` — the current Production answer.
+
+## Self-Check
 
 ```bash
 pytest tests/ -q
 ```
 
-This is a self-check, not the grader.
+The smoke tests check registration, model-card validation, both Production
+gates, archival of the previous Production version, lookup, and the complete
+pipeline.
 
-## Deliverables (what you commit)
+## Deliverables
 
-- `src/mini_model_registry.py`, completed.
-- `model_card_fields.json`, filled in with real content (no `TODO` left).
-- The `.model_registry/` directory your pipeline run produced (small JSON
-  manifests + cards only).
-- `registry_summary.json`.
-- A short `NOTES.md`: the `--student-id` value you used (required — see
-  above), which candidate ended up in Production and why, what would you
-  need to add to `promote_model`'s gate if you also wanted to block
-  promotion of a model trained on stale (e.g. >30-day-old) feature data, and
-  — tying back to this week's AutoML/HPO framing — if a hyperparameter
-  search had handed you 40 candidates instead of 2, what in your
-  `register_model`/`promote_model` design would need to change (or
-  genuinely wouldn't) to gate 40 instead of 2?
-
-
-## Grading checklist
-
-- [ ] `data/` matches what `generate_for_student.py --student-id <NOTES.md value>`
-      actually produces.
-- [ ] `register_model` correctly versions models and never overwrites a
-      prior version.
-- [ ] `generate_model_card` genuinely rejects incomplete/TODO cards (checked
-      against a held-out incomplete card, not just the one you tested with).
-- [ ] `promote_model` blocks Production promotion on both governance
-      conditions independently, and correctly archives the prior Production
-      version on a successful promotion.
-- [ ] `get_production_model` returns the right version, and `None` when
-      nothing is in Production.
-- [ ] `model_card_fields.json` is genuinely filled in — no leftover `TODO`,
-      answers are specific to this model, not generic filler.
-- [ ] `NOTES.md` shows real reasoning about the second and third questions,
-      not just a restatement of the first.
-- [ ] Meaningful commit history and a working README.
+- Completed `src/mini_model_registry.py`.
+- Completed `model_card_fields.json` with no `TODO` text.
+- Personalized `data/candidate_a/` and `data/candidate_b/` files.
+- Generated `.model_registry/` and `registry_summary.json`.
+- `NOTES.md` containing:
+  - your student ID;
+  - which candidate reached Production and why;
+  - how to add a stale-feature-data check for data older than 30 days;
+  - whether the design can gate 40 candidates from an AutoML search.
 
 ## Submission
 
