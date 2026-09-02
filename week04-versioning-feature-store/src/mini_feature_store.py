@@ -100,9 +100,10 @@ def snapshot_raw_version(input_path, registry_dir):
             except json.JSONDecodeError:
                 continue
 
+    # if hash wasn't found create a new version
     version_id = _next_version_id(raw_versions_dir)
 
-    version_dir = os.path.join(raw_versions_dir, version_id)
+    version_dir = os.path.join(raw_versions_dir, version_id)  #Creates a path like: .feature_store/raw_versions/v3
 
     os.makedirs(version_dir, exist_ok=True)  # exist_ok=True prevents an error if it already exists.
 
@@ -179,7 +180,7 @@ def build_features(rows):
         if row["card_present"] == "True":
             aggregate["card_present_count"] += 1
         if row["timestamp"] > aggregate["event_time"]:
-            aggregate["event_time"] = row["timestamp"]
+            aggregate["event_time"] = row["timestamp"]  #Checks whether the current transaction happened later.
 
     features = []
     for card_id, aggregate in aggregates.items():
