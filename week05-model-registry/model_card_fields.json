@@ -1,6 +1,7 @@
 {
-  "intended_use": "TODO: one or two sentences — what is this model for, and who is the intended user/system that consumes its predictions?",
-  "training_data": "TODO: one or two sentences — what data was this trained on (reference Week 4's card_activity feature group), what's its known coverage/limits?",
-  "limitations": "TODO: one or two sentences — under what conditions should this model NOT be trusted? (think about what a simple amount-threshold classifier structurally cannot catch)",
-  "ethical_considerations": "TODO: one or two sentences — what's the cost of a false positive here (a legitimate transaction blocked) vs. a false negative (fraud that gets through), and who bears that cost?"
+  "intended_use": "This modelis used to detect the fradulant transactions based on the threshold amount and the intended users can be the banking systems.",
+  "training_data": "The model was trained on the Week 4 card_activity feature group[card_id, txn_count, avg_amount, max_amount, pct_card_present, event_time]. Its results are most reliable for transaction amounts and card behavior similar to the data available during training.",
+  "limitations": "Because the classifier relies on an amount threshold, it may miss low-value fraud, repeated small transactions, account-takeover patterns, and fraud that does not affect transaction amount. Performance may decline when customer behavior, transaction patterns, or the upstream feature definition changes.",
+  "ethical_considerations": "False positives can delay legitimate purchases, inconvenience customers, and create unnecessary investigation work. False negatives can allow financial loss to customers or the business, so every alert should receive proportionate human review and customers should have a way to challenge an incorrect decision."
 }
+
