@@ -12,8 +12,9 @@ built image ID/tag):
 
 docker build -t week6-detector .
 
-writing image sha256:414c255e1c7057c809d4e19daaef4b9900fea751e54dd0af30f0d98f901e4d8c                                                                      0.0s
- => => naming to docker.io/library/week6-detector 
+writing image sha256:d3d717e2fb11aed5cee232f16ff334089e38d9d703820f966ea27c3a13777aee                                                                              
+ => => naming to docker.io/library/week6-detector
+
 
 ## Run
 

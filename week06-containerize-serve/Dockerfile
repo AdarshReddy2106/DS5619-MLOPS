@@ -6,7 +6,7 @@
 
 # TODO: pick a small official Python base image. A "slim" variant is enough
 # here — we have no torch/GPU dependency, just Flask + Pillow.
-FROM python:3.9-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
