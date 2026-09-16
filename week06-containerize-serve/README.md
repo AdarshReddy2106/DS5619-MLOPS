@@ -61,20 +61,20 @@ python src/app.py
 
 The Docker image was then built successfully using:
 
-docker build -t week6-detector .
+```docker build -t week6-detector .```
 
 ran using:
 
-docker run --rm -p 8080:8080 week6-detector
+```docker run --rm -p 8080:8080 week6-detector```
 
 The running container was verified using the following API requests:
 
-Health Check
+### Health Check
 
-curl http://localhost:8080/health
+```curl http://localhost:8080/health```
 
-Detection Test
+### Detection Test
 
-curl -F "image=@data/fixtures/camera_A_daylight/000.jpg" http://localhost:8080/detect
+```curl -F "image=@data/fixtures/camera_A_daylight/000.jpg" http://localhost:8080/detect```
 
 Both the /health and /detect endpoints were successfully verified against the running Docker container.
