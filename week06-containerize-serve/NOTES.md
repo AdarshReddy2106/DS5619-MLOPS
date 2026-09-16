@@ -2,7 +2,10 @@
 
 **Student ID used with `generate_for_student.py`:**
 <!-- paste the --student-id value you used -->
-
+student_id: 102301018
+seed: 1373709859
+Wrote 6 images across 2 camera profiles -> D:\ACADEMICS\SEM 7\DS5619-MLOPS\week06-containerize-serve\data\fixtures
+Wrote 23 annotations -> D:\ACADEMICS\SEM 7\DS5619-MLOPS\week06-containerize-serve\data\fixtures/_annotations.coco.json
 
 ## Built image size
 
