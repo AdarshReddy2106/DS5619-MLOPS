@@ -9,9 +9,9 @@ pip install -r requirements.txt
 python generate_for_student.py --student-id 102301018
 ```
 
-This overwrites data/fixtures/ with your own synthetic CCTV images — same file names, same two
+This overwrites data/fixtures/ with synthetic CCTV images — same file names, same two
 camera profiles, always at least one detectable "vehicle" per image, generated deterministically from
-your student ID.
+my student ID.
 
 ## Task Implementation
 
