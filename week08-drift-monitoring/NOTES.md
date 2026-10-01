@@ -1,8 +1,8 @@
 # NOTES.md — Week 8: Drift and Observability Monitoring
 
 **Student ID used with `generate_for_student.py`:**
-<!-- paste the --student-id value you used -->
-
+102301018
+seed: 356059401
 
 ## Drift level vs. expectation
 
