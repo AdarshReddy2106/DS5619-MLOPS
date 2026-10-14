@@ -1,47 +1,32 @@
 # NOTES.md — Week 10: Fairness and Robustness Audit
 
-**Student ID used with `generate_for_student.py`:**
-<!-- paste the --student-id value you used -->
-
+**Student ID:** 102301018  
+**Seed:** 1406615973
 
 ## Which classes got flagged?
 
-<!-- Which classes got flagged, and does that match what you'd expect given
-     how generate_for_student.py built the fixtures? -->
-
+The 0.90 recall audit flagged **Bicycle (0.650)**, **Two-wheeler (0.8125)**, and **Other (0.875)**. This is expected for Bicycle and Two-wheeler because the generator gives small vehicles the smallest box-size multipliers. `Other` is likely sampling noise because it has only 16 examples.
 
 ## If the grouping variable were a protected attribute
 
-<!-- Tying back to the framing note: what would change about this audit's
-     stakes and your obligations as an engineer if the grouping variable
-     were a protected demographic attribute instead of a vehicle class? -->
-
+A systematic performance gap could create ethical, legal, financial, and safety risks. The audit would require representative data, bias analysis, deployment gates, continuous monitoring, documentation, and human appeal processes.
 
 ## Which attack could corrupt this audit?
 
-<!-- Name one lifecycle stage and attack from the lecture (data poisoning,
-     model theft, or adversarial examples) that could silently corrupt THIS
-     audit's result, and one control from the lecture that would reduce the
-     risk. -->
-
+**Attack:** Evaluation-data poisoning during dataset preparation or testing. An attacker could alter annotations or pixels to lower or inflate recall.  
+**Control:** Hash and sign the dataset and annotations, store immutable versions, and verify provenance before running the audit.
 
 ## Would SHAP or LIME explain a missed detection?
 
-<!-- Pick one missed ground-truth box in a flagged class. An auditor asks
-     you to explain WHY the detector missed it, not just that it did. Would
-     SHAP or LIME actually help you answer that for a bounding-box detector
-     — and if not, what's different about this detector's inputs/outputs
-     that breaks the assumption both tools make? -->
+No, not directly. A missed box has no confidence score or prediction for SHAP/LIME to explain. These tools could explain a surrogate, such as reddish-pixel count, but not why an absent box was never proposed.
 
+Example: Bicycle annotation 83 in image 21 has an $8 \times 6$ box. Only 19 pixels satisfy the reddish rule, below the detector's 20-pixel minimum.
 
 ## What did your attack show?
 
-<!-- Using fairness_report.json["adversarial"]: at what eps does each flagged
-     class fall further? Which class is most fragile, and is it the same
-     class the clean audit flagged? Compare the drop ranking
-     (most_fragile) with lowest_recall_under_attack — do they agree, and
-     which is the better measure of who is hurt? What does that say about who bears the
-     cost of an attack (or of an unmonitored failure)? Then: what would
-     adversarial training or input validation look like for this detector,
-     and why does a rule this simple break so much more easily than a CNN
-     (or does it)? -->
+- **Flagged-class trend:** Bicycle fell from 0.65 to 0.10; Two-wheeler from 0.8125 to 0.25; Other stayed at 0.875 through $\epsilon=20$ and fell to 0.375 at $\epsilon=40$.
+- **Most fragile at $\epsilon=20$:** Three-wheeler (drop 0.4615), Sedan (0.3750), and Mini-bus (0.3125). None were clean-flagged.
+- **Drop vs. absolute recall:** The rankings disagree. Lowest attacked recall was Bicycle (0.35), Three-wheeler (0.5385), and Sedan (0.5625). Absolute recall is the better harm measure because it reflects actual detection performance.
+- **Cost:** Low-performing classes bear the greatest operational and safety cost because they start with more missed objects.
+- **Mitigation:** Use illumination normalization, denoising, channel checks, stronger thresholds, and morphological cleanup. Learned detectors can also use adversarial training.
+- **Rule vs. CNN:** The attack shifts pixel channels across fixed color thresholds. CNNs usually resist this better because they also use shapes, edges, and context.
