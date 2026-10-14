@@ -45,8 +45,14 @@ def perturb_image(img, eps):
     function to every value of a single-channel image; Image.merge("RGB",
     ...) puts them back. No per-pixel Python loop is needed.
     """
-    # TODO: implement
-    raise NotImplementedError
+    if eps == 0:
+        return img.copy()
+
+    r, g, b = img.split()
+    r_pert = r.point(lambda v: max(0, min(255, v - eps)))
+    g_pert = g.point(lambda v: max(0, min(255, v + eps)))
+    b_pert = b.point(lambda v: max(0, min(255, v + eps)))
+    return Image.merge("RGB", (r_pert, g_pert, b_pert))
 
 
 # ---------------------------------------------------------------------------
@@ -62,8 +68,13 @@ def audit_under_attack(coco_path, fixtures_dir, eps_values=(0, 10, 20, 30, 40),
     Return {eps: category_stats}, where category_stats is exactly what
     audit_by_category returns. eps=0 is the clean audit.
     """
-    # TODO: implement
-    raise NotImplementedError
+    attack_stats = {}
+    for eps in eps_values:
+        transform = None if eps == 0 else (lambda image, e=eps: perturb_image(image, e))
+        attack_stats[eps] = fa.audit_by_category(
+            coco_path, fixtures_dir, iou_threshold=iou_threshold, transform=transform
+        )
+    return attack_stats
 
 
 # ---------------------------------------------------------------------------
@@ -83,5 +94,12 @@ def find_most_fragile(attack_stats, eps, top_k=3):
     change with the student ID. run_pipeline.py also reports the classes with
     the lowest ABSOLUTE recall under attack; compare the two in NOTES.md.
     """
-    # TODO: implement
-    raise NotImplementedError
+    clean_stats = attack_stats[0]
+    pert_stats = attack_stats[eps]
+    drops = []
+    for name, s0 in clean_stats.items():
+        drop = round(s0["recall"] - pert_stats[name]["recall"], 4)
+        drops.append((name, drop))
+
+    drops.sort(key=lambda item: (-item[1], item[0]))
+    return drops[:top_k]
